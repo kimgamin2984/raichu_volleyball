@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "module": "es6",
+    "target": "es6",
+    "moduleResolution": "bundler",
+    "checkJs": true
+  },
+  "include": ["src/**/*"]
+}
