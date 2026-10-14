@@ -36,7 +36,7 @@ class DQN:
 
     def _get_Y(self,batch):
         Y = self.predict(batch['state'])
-        Y[np.arange(len(batch[action])),batch[action].astype(int)] = batch['reward'] + self.gamma * np.max(self.predict(batch['next_state']),axis=1) * (1-batch['done'])
+        Y[np.arange(len(batch['action'])),batch['action'].astype(int)] = batch['reward'] + self.gamma * np.max(self.predict(batch['next_state']),axis=1) * (1-batch['done'])
         return Y
 
     def train_step(self,batch):
