@@ -22,9 +22,9 @@ class DQN:
 
     def _forward(self,X):
         # input = np.array(X,dtype=np.float16)
-        input = np.array(X,dtype=np.float32)
+        X = np.array(X,dtype=np.float32)
 
-        Z1 = np.dot(input,self.W1)+self.b1
+        Z1 = np.dot(X,self.W1)+self.b1
         A1 = np.maximum(Z1,0)
         Z2 = np.dot(A1,self.W2)+self.b2
         A2 = np.maximum(Z2,0)
@@ -34,11 +34,15 @@ class DQN:
     def predict(self,X):
         return self._forward(X)['Z3']
 
-    def train_step(self,X,Y):
-        # X = np.array(X,dtype=np.float16)
-        X = np.array(X,dtype=np.float32)
-        # Y = np.array(Y,dtype=np.float16)
-        Y = np.array(Y,dtype=np.float32)
+    def _get_Y(self,batch):
+        Y = self.predict(batch['state'])
+        Y[np.arange(len(batch[action])),batch[action].astype(int)] = batch['reward'] + self.gamma * np.max(self.predict(batch['next_state']),axis=1) * (1-batch['done'])
+        return Y
+
+    def train_step(self,batch):
+        # X = np.array(batch['state'],dtype=np.float16)
+        X = np.array(batch['state'],dtype=np.float32)
+        Y = self._get_Y(batch)
 
         forwarded = self._forward(X)
         
