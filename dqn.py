@@ -1,6 +1,6 @@
 import numpy as np
 # import cupy as np
-class DQN():
+class DQN:
     def __init__(self):
         self.lr = 0.0001
         self.gamma = 0.9
@@ -10,9 +10,11 @@ class DQN():
         self.hidden_dim = 64
         self.output_dim = 32
 
-        self.W1 = np.random.randn(self.input_dim,self.hidden_dim) * np.sqrt(2/self.input_dim)
-        self.W2 = np.random.randn(self.hidden_dim,self.hidden_dim) * np.sqrt(2/self.hidden_dim)
-        self.W3 = np.random.randn(self.hidden_dim,self.output_dim) * np.sqrt(2/self.hidden_dim)
+        self.rng = np.random.default_rng()
+
+        self.W1 = self.rng.standard_normal(size=(self.input_dim,self.hidden_dim)) * np.sqrt(2/self.input_dim)
+        self.W2 = self.rng.standard_normal(size=(self.hidden_dim,self.hidden_dim)) * np.sqrt(2/self.hidden_dim)
+        self.W3 = self.rng.standard_normal(size=(self.hidden_dim,self.output_dim)) * np.sqrt(2/self.hidden_dim)
 
         self.b1 = np.zeros(self.hidden_dim)
         self.b2 = np.zeros(self.hidden_dim)
@@ -75,3 +77,46 @@ class DQN():
         #     setattr(self,bname,bn[i] - self.lr*dbn[i])
 
         return np.mean((Z3-Y)**2)/2
+
+    def get_action(self,X):
+        if self.rng.random() <= self.epsilon:
+            return int(self.rng.integers(0,self.output_dim))
+        else:
+            return int(np.argmax(self.predict(X)))
+
+class ReplayBuffer:
+    def __init__(self):
+        self.capacity = 100000
+        self.state_dim = 10
+
+        self.counter = 0
+        self.pointer = 0
+        
+        self.rng = np.random.default_rng()
+
+        self.state_buffer = np.zeros((self.capacity,self.state_dim))
+        self.next_state_buffer = np.zeros((self.capacity,self.state_dim))
+        self.action_buffer = np.zeros(self.capacity)
+        self.reward_buffer  = np.zeros(self.capacity)
+        self.done_buffer = np.zeros(self.capacity)
+
+    def push(self,state,action,reward,next_state,done):
+        self.state_buffer[self.pointer] = state
+        self.action_buffer[self.pointer] = action
+        self.reward_buffer[self.pointer] = reward
+        self.next_state_buffer[self.pointer] = next_state
+        self.done_buffer[self.pointer] = done
+
+        self.counter += 1
+        self.pointer = self.counter % self.capacity
+
+    def sample(self,batch_size):
+        idx = self.rng.choice(np.minimum(self.counter,self.capacity),size=batch_size,replace=False,axis=0)
+        dic = {}
+        dic['state'] = self.state_buffer[idx]
+        dic['action'] = self.action_buffer[idx]
+        dic['reward'] = self.reward_buffer[idx]
+        dic['next_state'] = self.next_state_buffer[idx]
+        dic['done'] = self.done_buffer[idx]
+
+        return dic
