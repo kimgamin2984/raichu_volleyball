@@ -1,5 +1,5 @@
-const HALF_WIDTH = 216;  // 가로 432 / 2
-const HALF_HEIGHT = 152; // 세로 304 / 2
+const HALF_WIDTH = 216;
+const HALF_HEIGHT = 152;
 
 // 1. 좌표 정규화 함수 (-1.0 ~ 1.0)
 const normX = (x) => (x - HALF_WIDTH) / HALF_WIDTH;
