@@ -4,6 +4,7 @@
 'use strict';
 
 import { localStorageWrapper } from './utils/local_storage_wrapper.js';
+import { getAiLearningStatus, loadAiModel, resetOnlineLearning } from './ai_client.js';
 
 /** @typedef {import('./pikavolley.js').PikachuVolleyball} PikachuVolleyball */
 /** @typedef {import('@pixi/ticker').Ticker} Ticker */
@@ -60,6 +61,65 @@ const pauseResumeManager = {
  * @param {Ticker} ticker
  */
 export function setUpUI(pikaVolley, ticker) {
+  const aiStatus = document.getElementById('ai-model-status');
+  let onlineResetButton = null;
+  if (aiStatus) {
+    onlineResetButton = document.createElement('button');
+    onlineResetButton.type = 'button';
+    onlineResetButton.id = 'ai-learning-reset';
+    onlineResetButton.hidden = true;
+    aiStatus.insertAdjacentElement('afterend', onlineResetButton);
+  }
+
+  const renderAiStatus = (ready) => {
+    if (!aiStatus) return;
+    const language = document.documentElement.lang;
+    if (!ready) {
+      aiStatus.textContent = language === 'ko'
+        ? '학습된 봇 모델이 없습니다. 모델이 없으면 기본 hard AI로 플레이합니다.'
+        : language === 'zh'
+          ? '缺少已训练模型，将使用内置 hard AI。'
+          : 'The trained bot is missing. The built-in hard AI is used until one is available.';
+      if (onlineResetButton) onlineResetButton.hidden = true;
+      return;
+    }
+
+    const stats = getAiLearningStatus();
+    aiStatus.textContent = language === 'ko'
+      ? `봇 준비 · 인게임 학습 ${stats.onlineRallies.toLocaleString()}랠리 / ${stats.onlineUpdates.toLocaleString()}회 업데이트 · 이 브라우저에 저장`
+      : language === 'zh'
+        ? `AI 已就绪 · 对局学习 ${stats.onlineRallies.toLocaleString()} 回合 / ${stats.onlineUpdates.toLocaleString()} 次更新 · 保存在此浏览器`
+        : `AI ready · gameplay learning ${stats.onlineRallies.toLocaleString()} rallies / ${stats.onlineUpdates.toLocaleString()} updates · saved in this browser`;
+    if (onlineResetButton) {
+      onlineResetButton.hidden = false;
+      onlineResetButton.textContent = language === 'ko'
+        ? '인게임 학습 초기화'
+        : language === 'zh'
+          ? '重置对局学习'
+          : 'Reset gameplay learning';
+    }
+  };
+
+  if (onlineResetButton) {
+    onlineResetButton.addEventListener('click', () => {
+      resetOnlineLearning();
+      renderAiStatus(true);
+    });
+  }
+  window.addEventListener('pv-ai-learning-update', () => renderAiStatus(true));
+
+  const refreshAiStatus = async () => {
+    if (!aiStatus) return;
+    aiStatus.textContent = document.documentElement.lang === 'ko'
+      ? '저장된 봇 모델 불러오는 중…'
+      : document.documentElement.lang === 'zh'
+        ? '正在加载已保存的 AI 模型…'
+        : 'Loading the saved AI model…';
+    const status = await loadAiModel();
+    renderAiStatus(status.ready);
+  };
+  refreshAiStatus();
+
   /**
    * Apply options
    * @param {Options} options

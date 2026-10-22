@@ -6,6 +6,14 @@ import { GROUND_HALF_WIDTH, PikaPhysics } from './physics.js';
 import { MenuView, GameView, FadeInOut, IntroView } from './view.js';
 import { PikaKeyboard } from './keyboard.js';
 import { PikaAudio } from './audio.js';
+import {
+  decodeAction,
+  discardOnlineRally,
+  finishOnlineRally,
+  getAiAction,
+  getAiState,
+  recordOnlineTransition,
+} from './ai_client.js';
 
 /** @typedef {import('@pixi/display').Container} Container */
 /** @typedef {import('@pixi/loaders').LoaderResource} LoaderResource */
@@ -40,7 +48,14 @@ export class PikachuVolleyball {
     this.audio = new PikaAudio(resources);
     this.physics = new PikaPhysics(true, true);
     this.keyboardArray = [
-      new PikaKeyboard('KeyD', 'KeyG', 'KeyR', 'KeyV', 'KeyZ', 'KeyF'), // for player1
+      new PikaKeyboard(
+        ['KeyD', 'ArrowLeft'],
+        ['KeyG', 'ArrowRight'],
+        ['KeyR', 'ArrowUp'],
+        ['KeyV', 'ArrowDown'],
+        ['KeyZ', 'Enter'],
+        'KeyF'
+      ), // for player1: original keys plus arrow-key aliases
       new PikaKeyboard( // for player2
         'ArrowLeft',
         'ArrowRight',
@@ -62,8 +77,9 @@ export class PikachuVolleyball {
     /** @type {number} number of elapsed normal fps frames for rendering slow motion */
     this.slowMotionNumOfSkippedFrames = 0;
 
-    /** @type {number} 0: with computer, 1: with friend */
-    this.selectedWithWho = 0;
+    this.aiOpponentEnabled = false;
+    this._aiPendingState = null;
+    this._aiPendingAction = null;
 
     /** @type {number[]} [0] for player 1 score, [1] for player 2 score */
     this.scores = [0, 0];
@@ -136,6 +152,24 @@ export class PikachuVolleyball {
     // catch keyboard input and freeze it
     this.keyboardArray[0].getInput();
     this.keyboardArray[1].getInput();
+
+    this._aiPendingState = null;
+    this._aiPendingAction = null;
+    if (this.state === this.round && this.aiOpponentEnabled &&
+        !this.gameEnded && !this.roundEnded) {
+      const state = getAiState(this.physics);
+      const action = getAiAction(state, !this.physics.player1.isComputer);
+      if (Number.isInteger(action)) {
+        this.physics.player2.isComputer = false;
+        Object.assign(this.keyboardArray[1], decodeAction(action));
+        this._aiPendingState = state;
+        this._aiPendingAction = action;
+      } else {
+        // Keep the original built-in opponent available until the model loads.
+        this.physics.player2.isComputer = true;
+      }
+    }
+
     this.state();
   }
 
@@ -169,22 +203,20 @@ export class PikachuVolleyball {
   }
 
   /**
-   * Menu: select who do you want to play. With computer? With friend?
+   * Menu: start a one-player game against the trained bot.
    * @type {GameState}
    */
   menu() {
     if (this.frameCounter === 0) {
       this.view.menu.visible = true;
       this.view.fadeInOut.setBlackAlphaTo(0);
-      this.selectedWithWho = 0;
-      this.view.menu.selectWithWho(this.selectedWithWho);
     }
     this.view.menu.drawFightMessage(this.frameCounter);
     this.view.menu.drawSachisoft(this.frameCounter);
     this.view.menu.drawSittingPikachuTiles(this.frameCounter);
     this.view.menu.drawPikachuVolleyballMessage(this.frameCounter);
     this.view.menu.drawPokemonMessage(this.frameCounter);
-    this.view.menu.drawWithWhoMessages(this.frameCounter);
+    this.view.menu.drawAiPrompt(this.frameCounter);
     this.frameCounter++;
 
     if (
@@ -200,44 +232,16 @@ export class PikachuVolleyball {
       return;
     }
 
-    if (
-      (this.keyboardArray[0].yDirection === -1 ||
-        this.keyboardArray[1].yDirection === -1) &&
-      this.selectedWithWho === 1
-    ) {
-      this.noInputFrameCounter = 0;
-      this.selectedWithWho = 0;
-      this.view.menu.selectWithWho(this.selectedWithWho);
-      this.audio.sounds.pi.play();
-    } else if (
-      (this.keyboardArray[0].yDirection === 1 ||
-        this.keyboardArray[1].yDirection === 1) &&
-      this.selectedWithWho === 0
-    ) {
-      this.noInputFrameCounter = 0;
-      this.selectedWithWho = 1;
-      this.view.menu.selectWithWho(this.selectedWithWho);
-      this.audio.sounds.pi.play();
-    } else {
-      this.noInputFrameCounter++;
-    }
+    this.noInputFrameCounter++;
 
     if (
       this.keyboardArray[0].powerHit === 1 ||
       this.keyboardArray[1].powerHit === 1
     ) {
-      if (this.selectedWithWho === 1) {
-        this.physics.player1.isComputer = false;
-        this.physics.player2.isComputer = false;
-      } else {
-        if (this.keyboardArray[0].powerHit === 1) {
-          this.physics.player1.isComputer = false;
-          this.physics.player2.isComputer = true;
-        } else if (this.keyboardArray[1].powerHit === 1) {
-          this.physics.player1.isComputer = true;
-          this.physics.player2.isComputer = false;
-        }
-      }
+      this.physics.player1.isComputer = false;
+      this.physics.player2.isComputer = true;
+      this.physics.player2.computerDifficulty = 2;
+      this.aiOpponentEnabled = true;
       this.audio.sounds.pikachu.play();
       this.frameCounter = 0;
       this.noInputFrameCounter = 0;
@@ -248,6 +252,9 @@ export class PikachuVolleyball {
     if (this.noInputFrameCounter >= this.noInputFrameTotal.menu) {
       this.physics.player1.isComputer = true;
       this.physics.player2.isComputer = true;
+      this.physics.player1.computerDifficulty = 2;
+      this.physics.player2.computerDifficulty = 2;
+      this.aiOpponentEnabled = true;
       this.frameCounter = 0;
       this.noInputFrameCounter = 0;
       this.state = this.afterMenuSelection;
@@ -286,6 +293,7 @@ export class PikachuVolleyball {
    */
   startOfNewGame() {
     if (this.frameCounter === 0) {
+      discardOnlineRally();
       this.view.game.visible = true;
       this.gameEnded = false;
       this.roundEnded = false;
@@ -347,6 +355,19 @@ export class PikachuVolleyball {
       this.keyboardArray
     );
 
+    if (this.aiOpponentEnabled && !this.physics.player1.isComputer &&
+        !this.isPracticeMode && !this.roundEnded &&
+        this._aiPendingState && Number.isInteger(this._aiPendingAction)) {
+      const nextState = getAiState(this.physics);
+      recordOnlineTransition(this._aiPendingState, this._aiPendingAction, nextState);
+      if (isBallTouchingGround) {
+        const reward = this.physics.ball.punchEffectX < GROUND_HALF_WIDTH ? 1 : -1;
+        finishOnlineRally(reward);
+      }
+    }
+    this._aiPendingState = null;
+    this._aiPendingAction = null;
+
     this.playSoundEffect();
     this.view.game.drawPlayersAndBall(this.physics);
     this.view.game.drawCloudsAndWave();
@@ -406,6 +427,7 @@ export class PikachuVolleyball {
         this.state = this.afterEndOfRound;
       }
     }
+
   }
 
   /**
@@ -502,6 +524,9 @@ export class PikachuVolleyball {
    * Called if restart button clicked
    */
   restart() {
+    discardOnlineRally();
+    this._aiPendingState = null;
+    this._aiPendingAction = null;
     this.frameCounter = 0;
     this.noInputFrameCounter = 0;
     this.slowMotionFramesLeft = 0;

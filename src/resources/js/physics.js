@@ -132,6 +132,8 @@ class Player {
     this.isPlayer2 = isPlayer2; // 0xA0
     /** @type {boolean} Is controlled by computer? */
     this.isComputer = isComputer; // 0xA4
+    /** @type {number} 0: low, 1: medium, 2: high */
+    this.computerDifficulty = 1;
     this.initializeForNewRound();
 
     /** @type {number} -1: left, 0: no diving, 1: right */
@@ -210,7 +212,8 @@ class Player {
      *
      * @type {number} 0, 1, 2, 3 or 4
      */
-    this.computerBoldness = rand() % 5; // 0xD8  // initialized to (_rand() % 5)
+    const difficultyBoldness = [0, 2, 4][this.computerDifficulty] ?? 2;
+    this.computerBoldness = difficultyBoldness;
   }
 }
 

@@ -220,6 +220,22 @@ span.check {
 #game-canvas-container {
   position: relative;
 }
+#ai-model-status {
+  min-height: 1.4em;
+  padding-top: 4px;
+  font-size: 12px;
+  text-align: center;
+  opacity: 0.8;
+}
+#ai-learning-reset {
+  display: block;
+  margin: 3px auto 0;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+#ai-learning-reset[hidden] {
+  display: none;
+}
 #game-canvas {
   display: block;
   margin-left: auto;

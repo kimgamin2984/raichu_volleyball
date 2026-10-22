@@ -9,6 +9,7 @@
 import { AnimatedSprite } from '@pixi/sprite-animated';
 import { Sprite } from '@pixi/sprite';
 import { Container } from '@pixi/display';
+import { Text } from '@pixi/text';
 import { Cloud, Wave, cloudAndWaveEngine } from './cloud_and_wave.js';
 import { ASSETS_PATH } from './assets_path.js';
 
@@ -68,7 +69,7 @@ export class IntroView {
 }
 
 /**
- * Class representing menu view where you can select "play with computer" or "play with friend"
+ * Class representing the one-bot game menu
  */
 export class MenuView {
   /**
@@ -77,7 +78,7 @@ export class MenuView {
    */
   constructor(resources) {
     const textures = resources[ASSETS_PATH.SPRITE_SHEET].textures;
-
+    const language = document.documentElement.lang;
     this.messages = {
       pokemon: makeSpriteWithAnchorXY(textures, TEXTURES.POKEMON, 0, 0),
       pikachuVolleyball: makeSpriteWithAnchorXY(
@@ -86,10 +87,14 @@ export class MenuView {
         0,
         0
       ),
-      withWho: [
-        makeSpriteWithAnchorXY(textures, TEXTURES.WITH_COMPUTER, 0, 0),
-        makeSpriteWithAnchorXY(textures, TEXTURES.WITH_FRIEND, 0, 0),
-      ],
+      aiTitle: new Text(language === 'zh' ? '对战 AI' : language === 'en' ? 'Play against AI' : 'AI 대전', {
+        fontFamily: 'Arial, sans-serif', fontSize: 16, fill: 0xffffff,
+        stroke: 0x35235c, strokeThickness: 3,
+      }),
+      startPrompt: new Text(language === 'zh' ? '按 Z / Enter 开始' : language === 'en' ? 'Press Z / Enter to start' : 'Z / Enter 키로 시작', {
+        fontFamily: 'Arial, sans-serif', fontSize: language === 'en' ? 11 : 13, fill: 0xffffff,
+        stroke: 0x35235c, strokeThickness: 3,
+      }),
       sachisoft: makeSpriteWithAnchorXY(textures, TEXTURES.SACHISOFT, 0, 0),
       fight: makeSpriteWithAnchorXY(textures, TEXTURES.FIGHT, 0, 0),
     };
@@ -110,15 +115,13 @@ export class MenuView {
     this.container.addChild(this.sittingPikachuTilesContainer);
     this.container.addChild(this.messages.pokemon);
     this.container.addChild(this.messages.pikachuVolleyball);
-    this.container.addChild(this.messages.withWho[0]);
-    this.container.addChild(this.messages.withWho[1]);
+    this.container.addChild(this.messages.aiTitle);
+    this.container.addChild(this.messages.startPrompt);
     this.container.addChild(this.messages.sachisoft);
     this.container.addChild(this.messages.fight);
     this.initializeVisibles();
 
     this.sittingPikachuTilesDisplacement = 0;
-    this.selectedWithWho = -1; // 0: with computer, 1: with friend, -1: not selected
-    this.selectedWithWhoMessageSizeIncrement = 2;
   }
 
   /** @return {boolean} Is visible? */
@@ -138,7 +141,12 @@ export class MenuView {
 
   initializeVisibles() {
     for (const prop in this.messages) {
-      this.messages[prop].visible = false;
+      const message = this.messages[prop];
+      if (Array.isArray(message)) {
+        message.forEach((item) => { item.visible = false; });
+      } else {
+        message.visible = false;
+      }
     }
   }
 
@@ -278,48 +286,24 @@ export class MenuView {
 
   /**
    * referred to FUN_00405ec0
-   * Draw with who messages (with computer or with friend) as frame goes
+   * Draw the single-bot prompt as the menu animation advances
    * @param {number} frameCounter
    */
-  drawWithWhoMessages(frameCounter) {
-    const withWho = this.messages.withWho;
-    const w = withWho[0].texture.width;
-    const h = withWho[0].texture.height;
-
+  drawAiPrompt(frameCounter) {
     if (frameCounter === 0) {
-      for (let i = 0; i < 2; i++) {
-        withWho[i].visible = false;
-      }
+      this.messages.aiTitle.visible = false;
+      this.messages.startPrompt.visible = false;
       return;
     }
 
     if (frameCounter > 70) {
-      if (this.selectedWithWhoMessageSizeIncrement < 10) {
-        this.selectedWithWhoMessageSizeIncrement += 1;
-      }
-      for (let i = 0; i < 2; i++) {
-        const selected = Number(this.selectedWithWho === i); // 1 if selected, 0 otherwise
-        const halfWidthIncrement =
-          selected * (this.selectedWithWhoMessageSizeIncrement + 2);
-        const halfHeightIncrement =
-          selected * this.selectedWithWhoMessageSizeIncrement;
-
-        withWho[i].visible = true;
-        withWho[i].x = 216 - w / 2 - halfWidthIncrement;
-        withWho[i].y = 184 + 30 * i - halfHeightIncrement;
-        withWho[i].width = w + 2 * halfWidthIncrement;
-        withWho[i].height = h + 2 * halfHeightIncrement;
-      }
+      this.messages.aiTitle.visible = true;
+      this.messages.aiTitle.anchor.set(0.5);
+      this.messages.aiTitle.position.set(216, 177);
+      this.messages.startPrompt.visible = true;
+      this.messages.startPrompt.anchor.set(0.5);
+      this.messages.startPrompt.position.set(216, 207);
     }
-  }
-
-  /**
-   * Select with who for the effect that selected option gets bigger
-   * @param {number} i 0: with computer, 1: with friend
-   */
-  selectWithWho(i) {
-    this.selectedWithWho = i;
-    this.selectedWithWhoMessageSizeIncrement = 2;
   }
 }
 

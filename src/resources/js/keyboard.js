@@ -10,14 +10,14 @@ import { PikaUserInput } from './physics.js';
 export class PikaKeyboard extends PikaUserInput {
   /**
    * Create a keyboard used for game controller
-   * left, right, up, down, powerHit: KeyboardEvent.code value for each
+   * left, right, up, down, powerHit: KeyboardEvent.code value (or aliases) for each
    * Refer {@link https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values}
-   * @param {string} left KeyboardEvent.code value of the key to use for left
-   * @param {string} right KeyboardEvent.code value of the key to use for right
-   * @param {string} up KeyboardEvent.code value of the key to use for up
-   * @param {string} down KeyboardEvent.code value of the key to use for down
-   * @param {string} powerHit KeyboardEvent.code value of the key to use for power hit or selection
-   * @param {string} downRight KeyboardEvent.code value of the key to use for having the same effect
+   * @param {string|string[]} left KeyboardEvent.code value(s) for left
+   * @param {string|string[]} right KeyboardEvent.code value(s) for right
+   * @param {string|string[]} up KeyboardEvent.code value(s) for up
+   * @param {string|string[]} down KeyboardEvent.code value(s) for down
+   * @param {string|string[]} powerHit KeyboardEvent.code value(s) for power hit or selection
+   * @param {string|string[]} downRight KeyboardEvent.code value(s) for having the same effect
    *                           when pressing down key and right key at the same time (Only player 1
    *                           has this key)
    */
@@ -110,10 +110,10 @@ class Key {
   /**
    * Create a key
    * Refer {@link https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values}
-   * @param {string} value KeyboardEvent.code value of this key
+   * @param {string|string[]} value KeyboardEvent.code value(s) for this key
    */
   constructor(value) {
-    this.value = value;
+    this.values = Array.isArray(value) ? value : value ? [value] : [];
     this.isDown = false;
     this.isUp = true;
 
@@ -127,7 +127,7 @@ class Key {
    * @param {KeyboardEvent} event
    */
   downHandler(event) {
-    if (event.code === this.value) {
+    if (this.values.includes(event.code)) {
       this.isDown = true;
       this.isUp = false;
       event.preventDefault();
@@ -139,7 +139,7 @@ class Key {
    * @param {KeyboardEvent} event
    */
   upHandler(event) {
-    if (event.code === this.value) {
+    if (this.values.includes(event.code)) {
       this.isDown = false;
       this.isUp = true;
       event.preventDefault();

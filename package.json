@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "webpack serve --config webpack.dev.js",
-    "build": "webpack --config webpack.prod.js"
+    "build": "webpack --config webpack.prod.js",
+    "train": "node train_gpu.js",
+    "train:cpu": "npm run train:build && node train.js",
+    "train:build": "webpack --config webpack.train.js"
   },
   "repository": {
     "type": "git",
@@ -48,6 +51,7 @@
     "@pixi/sound": "^4.2.1",
     "@pixi/sprite": "^6.4.2",
     "@pixi/sprite-animated": "^6.4.2",
+    "@pixi/text": "^6.4.2",
     "@pixi/spritesheet": "^6.4.2",
     "@pixi/ticker": "^6.4.2"
   }

@@ -29,6 +29,13 @@ module.exports = {
         {
           context: 'src/',
           from: 'resources/assets/**/*.+(json|png|mp3|wav)',
+          globOptions: {
+            ignore: [
+              '**/ai/low.json',
+              '**/ai/medium.json',
+              '**/ai/high.json',
+            ],
+          },
         },
         { from: 'src/en/manifest.json', to: 'en/manifest.json' },
         { from: 'src/ko/manifest.json', to: 'ko/manifest.json' },

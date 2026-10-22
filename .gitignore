@@ -1,6 +1,16 @@
 dist/
+dist-train/
 node_modules/
 analytics.html
 .firebase/
 .firebaserc
 firebase.json
+checkpoints/
+checkpoints-v2/
+checkpoints-v3/
+checkpoints-v4-alphachu/
+checkpoints-v5-alphachu/
+checkpoints-v6-alphachu/
+.venv/
+*.checkpoint.npz
+__pycache__/
